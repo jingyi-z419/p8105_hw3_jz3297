@@ -8,6 +8,8 @@ output: github_document
 library(tidyverse)
 library(p8105.datasets)
 library(readxl)
+library(ggridges)
+library(patchwork)
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -116,6 +118,10 @@ accel_df =
     names_prefix = "activity_",
     values_to = "activity_counts"
   )
+
+accel_df = 
+  mutate_at(accel_df, vars(minute), as.numeric)
+
 ```
 
 This dataset contains information on five weeks of accelerometer data collected from a 63 year-old male with BMI 25 and diagnosed with congestive heart failure. After cleaning and tidying, the final dataset contains week, day id, day, weekday, weekend, minute, and activity counts columns. It has a total of `r nrow(accel_df)` rows and `r ncol(accel_df)` columns. 
@@ -127,19 +133,24 @@ This dataset contains information on five weeks of accelerometer data collected 
 
 ```{r}
 accel_df %>%
-  group_by(day_id) %>%
+  group_by(day) %>%
   summarize(total_activity = sum(activity_counts)) %>%
+  arrange(desc(total_activity)) %>%
   knitr::kable()
 ```
 
-Describe trends?
+The participant had more activity counts for Friday, Wednesday, and Thursday.
+
+<br />
 
 ##### Make a single-panel plot 
 
 ```{r}
 accel_df %>%
+  group_by(day) %>%
   ggplot(aes(x = minute, y = activity_counts, color = day)) +
-  geom_point(alpha = .7) +
+  geom_line() +
+  stat_smooth()
   labs(
     title = "24-hour Activity Plot",
     x = "24-hour (min)",
@@ -158,12 +169,68 @@ Describe patterns or conclusions based on this graph.
 
 ```{r}
 data("ny_noaa")
+
 ny_noaa =
-  mutate_at(ny_noaa, vars(date), as.character) %>%
+  mutate_at(ny_noaa, vars(date), as.factor) %>%
   separate(date, into = c("year", "month", "day"))
+
+ny_noaa =
+  mutate_at(ny_noaa, vars(tmax, tmin), as.numeric) %>%
+  mutate_at(vars(year, month, day), as.factor)
 ```
 
 
+<br />
+
+##### The most commonly observed values for snowfall.
+
+```{r}
+ny_noaa %>%
+  count(snow) %>%
+  arrange(desc(n))
+```
+
+why?
+
+
+<br />
+
+##### Make a two-panel plot showing the average max temperature in January and July in each station across years.
+
+```{r}
+ny_noaa %>%
+  group_by(id, month, year) %>%
+  summarize(mean_tmax = mean(tmax)) %>%
+  filter(month %in% c("01", "07")) %>%
+  ggplot(aes(x = year, y = mean_tmax)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  facet_grid(. ~ month)
+```
+
+
+Is there any observable/interpretable structure? outliers?
+
+<br />
+
+##### Make a two-panel plot showing tmax vs. tmin & make a plot showing the distribution of snowfall values 0<X<100 by year
+
+```{r}
+tmax_tmin_p =
+  ny_noaa %>%
+  ggplot(aes(x = tmax, y = tmin)) +
+  geom_hex()
+
+
+snow_p =
+  ny_noaa %>%
+  filter(snow > 0 & snow < 100) %>%
+  ggplot(aes(x = year, y = snow)) +
+  geom_boxplot()
+
+
+tmax_tmin_p + snow_p
+```
 
 
 
