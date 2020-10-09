@@ -28,10 +28,11 @@ scale_colour_discrete = scale_colour_viridis_d
 scale_fill_discrete = scale_fill_viridis_d
 ```
 
+<br />
 
 ## Problem 1
 
-```{r}
+```{r load_dataset}
 data("instacart")
 ```
 
@@ -39,18 +40,21 @@ This dataset contains `r nrow(instacart)` rows and `r ncol(instacart)` columns.
 
 Observations are the level of items in orders by user. There are user/ order variables -- user ID, order ID, order day, and order hour. There are also item variables -- name, aisle, department, and some numeric codes.
 
+<br />
 
 ##### How many aisles, and which are most items from?
 
-```{r}
+```{r aisle_count}
 instacart %>%
   count(aisle) %>%
   arrange(desc(n))
 ```
 
-##### Make a plot
+<br />
 
-```{r}
+##### Make a plot that shows the number of items ordered in each aisle.
+
+```{r items_plot}
 instacart %>%
   count(aisle) %>%
   filter(n > 10000) %>%
@@ -63,9 +67,11 @@ instacart %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
+<br />
+
 ##### Make a table showing the three most popular items in each of the aisles.
 
-```{r}
+```{r popular_table}
 instacart %>%
   filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>%
   group_by(aisle) %>%
@@ -76,9 +82,11 @@ instacart %>%
   knitr::kable()
 ```
 
+<br />
+
 ##### Make a table showing apples vs. ice cream
 
-```{r}
+```{r apple_ic_table}
 instacart %>%
   filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>%
   group_by(product_name, order_dow) %>%
@@ -96,78 +104,94 @@ instacart %>%
 
 ##### Load and tidy the dataset.
 
-```{r tidy_dataset}
+```{r tidy_dataset_accel_1}
 accel_df = 
   read_csv("./data/accel_data.csv") %>%
   janitor::clean_names() %>%
-  mutate(
-    day = factor(day),
-    weekday = case_when(
-      day == "Monday" ~ "Monday",
-      day == "Tuesday" ~ "Tuesday",
-      day == "Wednesday" ~ "Wednesday",
-      day == "Thursday" ~ "Thursday",
-      day == "Friday" ~ "Friday"),
-    weekend = case_when(
-      day == "Saturday" ~ "Saturday",
-      day == "Sunday" ~ "Sunday")
-    ) %>%
   pivot_longer(
     activity_1:activity_1440,
     names_to = "minute",
     names_prefix = "activity_",
     values_to = "activity_counts"
-  )
-
-accel_df = 
-  mutate_at(accel_df, vars(minute), as.numeric)
-
+  ) %>%
+  mutate(
+    day = factor(day),
+    weekday_weekend = case_when(
+     day == "Monday" ~ "weekday",
+     day == "Tuesday" ~ "weekday",
+     day == "Wednesday" ~ "weekday",
+     day == "Thursday" ~ "weekday",
+     day == "Friday" ~ "weekday",
+     day == "Saturday" ~ "weekend",
+     day == "Sunday" ~ "weekend"))
 ```
 
-This dataset contains information on five weeks of accelerometer data collected from a 63 year-old male with BMI 25 and diagnosed with congestive heart failure. After cleaning and tidying, the final dataset contains week, day id, day, weekday, weekend, minute, and activity counts columns. It has a total of `r nrow(accel_df)` rows and `r ncol(accel_df)` columns. 
+```{r tidy_dataset_accel_2}
+accel_df = 
+  mutate_at(accel_df, vars(week), as.character) %>%
+  mutate_at(vars(minute), as.numeric) %>%
+  mutate(
+    week = forcats::fct_relevel(week, 
+      c("1", "2", "3", "4", "5")),
+    day = forcats::fct_relevel(day, 
+      c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+  ))
+```
+
+```{r tidy_dataset_accel_3}
+accel_df = 
+  accel_df %>%
+  group_by(week) %>%
+  arrange(day, .by_group = TRUE) %>%
+  group_by(day_id) %>%
+  mutate(min_week = 1,
+         hour = cumsum(min_week) %/% 60) %>%
+  ungroup(day_id) %>%
+  select(-min_week)
+```
+
+This dataset contains information on five weeks of accelerometer data collected from a 63 year-old male with BMI 25 and diagnosed with congestive heart failure. During the  cleaning and tidying process, columns activity_1 - activity_1440 are put into a tidier form with a minute column and a activity_counts column. A new variable weekday vs. weekend is created with Monday to Friday coded as "weekday" and Saturday, Sunday as "weekend". Week and day are reordered into correct order. Lastly, a new variable hour is created for plotting. The final dataset contains week, day id, day, minute, activity counts, weekday vs. weekend, and hour variables. It has a total of `r nrow(accel_df)` rows and `r ncol(accel_df)` columns. 
 
 <br />
 
 ##### Create a total activity variable for each day, and create a table showing these totals.
 
-
-```{r}
+```{r total_activity_table}
 accel_df %>%
-  group_by(day_id) %>%
-  summarize(total_activity = sum(activity_counts)) %>%
+  group_by(week, day) %>%
+  summarize(total_activity = sum(activity_counts, na.rm = TRUE)) %>%
+  pivot_wider(
+    names_from = week,
+    names_prefix = "week",
+    values_from = total_activity
+  ) %>%
   knitr::kable()
-
-accel_df %>%
-  group_by(day_id) %>%
-  summarize(total_activity = sum(activity_counts)) %>%
-  arrange(desc(total_activity))
 ```
 
-The participant had the most activity counts on the 16th day and the least activity counts on the 31st day.
+This participant had the most activity counts on Sunday for week 1 and the least activity counts on Saturday for week 4 and 5.
 
 <br />
 
-##### Make a single-panel plot 
+##### Make a single-panel plot that shows the 24-hour activity for each day. 
 
-```{r}
+```{r hourly_activity_plot}
 accel_df %>%
-  mutate(
-    day = forcats::fct_relevel(day, c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
-    ) %>%
-  group_by(day, minute) %>%
-  ggplot(aes(x = minute, y = activity_counts, color = day)) +
-  geom_point(alpha = 0.15, size = 0.1) +
-  stat_smooth(se = FALSE, size = 0.7) +
+  group_by(day_id, day, hour) %>%
+  summarize(activity_counts_hr = sum(activity_counts, na.rm = TRUE)) %>%
+  ggplot(aes(x = hour, y = activity_counts_hr, color = day, group = day_id)) +
+  geom_line(alpha = 0.2, size = 0.4) +
+  stat_smooth(se = FALSE, geom = "line") +
+  scale_x_continuous(limits = c(0,24), breaks = seq(0,24,1)) +
+  scale_y_continuous(limits = c(-10000, 60000), breaks = seq(-10000, 60000, 20000)) +
   labs(
-    title = "Daily Activity counts plot",
+    title = "Hourly activity counts in 35 days",
     x = "Time (hour)",
-    y = "Activity counts",
+    y = "Hourly activity counts",
     caption = "Data from Advanced Cardiac Care Center of Columbia University Medical Center"
-  ) +
-  scale_x_continuous(breaks = c(0, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900, 960, 1020, 1080, 1140, 1200, 1260, 1320, 1380, 1440), labels = c("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24"))
+  )
 ```
 
-This person was more active during 10am to 12pm on Sunday and 8pm to 10pm on Friday than other times during the week. 
+The hourly activity counts in 35 days with smooth line plot shows that the participant normally becomes active around 7am to 8am and inactive after 5pm to 6pm. Most of days that participant is most active during 3pm-6pm. However, on Sundays and Mondays, the participant is most active during 9am to 11am. There is one particular Saturday which the participant's activity counts are is throughout 24 hours. 
 
 <br />
 
@@ -175,7 +199,7 @@ This person was more active during 10am to 12pm on Sunday and 8pm to 10pm on Fri
 
 ##### Load and tidy the dataset
 
-```{r}
+```{r tidy_dataset_ny}
 data("ny_noaa")
 
 ny_noaa =
@@ -192,37 +216,45 @@ ny_noaa =
   mutate_at(vars(year, month, day), as.factor)
 ```
 
+```{r NAs_table}
+summary(ny_noaa)
+```
+
+This dataset contains information collected from `r distinct(ny_noaa, id) %>% count()` New York state weather stations from January 1, 1981 through December 31, 2010. It contains id (weather station id), date, prcp (precipitation), snow (snowfall), snwd (snow depth), tmax, and tmin variables. During the cleaning and tidying process, date is separated into year, month, and day. Prcp, tmax, and tmin's units are converted from tenths of degree C to degree C. One big issue for this dataset is the enormous amount of missing values in prcp, snow, snwd, tmax, and tmin. The traditional method of simply omitting missing values is not applicable in this dataset. The final dataset contains id, year, month, day, prcp, snow, snwd, tmax, and tmin. It has a total of `r nrow(ny_noaa)` rows and `r ncol(ny_noaa)` columns.
+
 <br />
 
-##### The most commonly observed values for snowfall.
+##### The most commonly observed values for snowfall
 
-```{r}
+```{r snow_common}
 ny_noaa %>%
   count(snow) %>%
   arrange(desc(n))
 ```
 
-The most commonly observed values for snowfall is zero. This is because New York state in general doesn't get a lot of snow. 
-
+The most commonly observed values for snowfall is zero. It can interpreted as most days from 1981 to 2010 did not snow in New York state. An outlier observed in snow is -13 which is an impossible number to obtain for snowfall. 
 
 <br />
 
 ##### Make a two-panel plot showing the average max temperature in January and July in each station across years.
 
-```{r}
+```{r average_max_temp_Jan_July}
 month.labs = c("January", "July")
 names(month.labs) = c("01", "07")
 
-
-ny_noaa %>%
+average_max_temp_p =
+  ny_noaa %>%
   group_by(id, month, year) %>%
-  summarize(mean_tmax = mean(tmax)) %>%
+  summarize(mean_tmax = mean(tmax, na.rm = TRUE)) %>%
   filter(month %in% c("01", "07")) %>%
-  ggplot(aes(x = year, y = mean_tmax, fill = year)) +
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle = -90, vjust = 0.5, hjust = 1)) +
+  drop_na() %>%
+  ggplot(aes(x = year, y = mean_tmax, color = id, group = id)) +
+  geom_point(alpha = 0.35) +
+  geom_path(alpha = 0.2) +
+  theme(axis.text.x = element_text(angle = -60, vjust = 0.5, hjust = 1), legend.position = "none") +
     labs(
-    title = "Average max temperature in New York, January vs. July",
+    title = "Average max temperature January vs. July",
+    subtitle = "1981-2010 in New York state",
     x = "Time (year)",
     y = "Average max temperature (C)",
     caption = "Data from NOAA National Climatic Data Center"
@@ -233,41 +265,48 @@ ny_noaa %>%
     )
 ```
 
-Is there any observable/interpretable structure? outliers?
+The average max temperature in January across all stations ranges from -10 C to 10 C. Three outliers observed below -10 C are in 1982, 1994, and 2005. The average max temperature in July across all stations ranges from 20 C to 35 C. Four outliers observed below 20 C are in 1984, 1988, 2004, and 2007. One outlier observed above 35 C is in 2010. 
 
 <br />
 
 ##### Make a two-panel plot showing tmax vs. tmin & make a plot showing the distribution of snowfall values 0<X<100 by year
 
-```{r}
+```{r tmax_tmin_snowfall_plot}
 tmax_tmin_p =
   ny_noaa %>%
   ggplot(aes(x = tmin, y = tmax)) +
   geom_hex() +
     labs(
     title = "Max vs. min temperature",
+    subtitle = "1981-2010 in New York state",
     x = "Max temperature (C)",
     y = "Min temperature (C)",
     caption = "Data from NOAA National Climatic Data Center"
   ) +
-  theme(legend.position = "right")
+  theme(legend.text = element_text(size = 5))
+
 
 snow_p =
   ny_noaa %>%
   filter(snow > 0 & snow < 100) %>%
-  ggplot(aes(x = year, y = snow, color = year)) +
-  geom_boxplot() +
-  theme(axis.text.x = element_text(angle = -90, vjust = 0.5, hjust = 1)) +
-      labs(
-    title = "Snowfall between 0 to 100",
-    x = "Time (year)",
-    y = "Snowfall (mm)",
+  drop_na() %>%
+  ggplot(aes(x = snow, y = year)) +
+  geom_density_ridges(aes(fill = year), scale = 3, size = 0.3) +
+  scale_x_continuous(breaks = seq(0,100,20)) +
+  theme(legend.position = "none") +
+  labs(
+    title = "Snowfall between 0mm to 100mm",
+    subtitle = "1981-2010 in New York state",
+    x = "Snowfall (mm)",
+    y = "Time (year)",
     caption = "Data from NOAA National Climatic Data Center"
-  ) +
-    theme(legend.position = "right")
-
+  )
 
 tmax_tmin_p + snow_p
 ```
+
+For the max vs. min temperature plot, the most counts for max temperature ranges from -10 C to 15 C, the most counts for min temperature ranges from 0 C to 30 C. It is hard to conclude from the max temperature that there is in fact global warming happening, however, the min temperature may show some evidence for global warming. 
+
+For the snowfall plot, snowfall distributions across 1981 to 2010 are very similar. The density graph shows three major peaks at 10mm-25mm, 50mm, and 75mm. It can be interpreted as the amount of snowfall from 1981 to 2010 did not change much. It did not show a clear evidence for global warming since it is assumed that the amount of snowfall would decrease. 
 
 
