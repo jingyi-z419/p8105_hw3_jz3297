@@ -302,7 +302,7 @@ snow_p =
     caption = "Data from NOAA National Climatic Data Center"
   )
 
-tmax_tmin_p + snow_p
+tmax_tmin_p + snow_p + plot_layout(ncol = 2, width = c(2, 1.5))
 ```
 
 For the max vs. min temperature plot, the most counts for max temperature ranges from -10 C to 15 C, the most counts for min temperature ranges from 0 C to 30 C. It is hard to conclude from the max temperature that there is in fact global warming happening, however, the min temperature may show some evidence for global warming. 
