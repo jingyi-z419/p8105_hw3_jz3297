@@ -55,7 +55,8 @@ instacart %>%
 ##### Make a plot that shows the number of items ordered in each aisle.
 
 ```{r items_plot}
-instacart %>%
+items_plot =
+  instacart %>%
   count(aisle) %>%
   filter(n > 10000) %>%
   mutate(
@@ -65,6 +66,8 @@ instacart %>%
   ggplot(aes(x = aisle, y = n)) +
   geom_point() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+ggsave("./results_plot/items_plot.pdf", items_plot, width = 8, height = 5)
 ```
 
 <br />
@@ -175,7 +178,8 @@ This participant had the most activity counts on Sunday for week 1 and the least
 ##### Make a single-panel plot that shows the 24-hour activity for each day. 
 
 ```{r hourly_activity_plot}
-accel_df %>%
+activity_plot =
+  accel_df %>%
   group_by(day_id, day, hour) %>%
   summarize(activity_counts_hr = sum(activity_counts, na.rm = TRUE)) %>%
   ggplot(aes(x = hour, y = activity_counts_hr, color = day, group = day_id)) +
@@ -189,6 +193,8 @@ accel_df %>%
     y = "Hourly activity counts",
     caption = "Data from Advanced Cardiac Care Center of Columbia University Medical Center"
   )
+
+ggsave("./results_plot/activity_plot.pdf", activity_plot, width = 8, height = 6)
 ```
 
 The hourly activity counts in 35 days with smooth line plot shows that the participant normally becomes active around 7am to 8am and inactive after 5pm to 6pm. Most of days that participant is most active during 3pm-6pm. However, on Sundays and Mondays, the participant is most active during 9am to 11am. There is one particular Saturday which the participant's activity counts are is throughout 24 hours. 
@@ -242,7 +248,7 @@ The most commonly observed values for snowfall is zero. It can interpreted as mo
 month.labs = c("January", "July")
 names(month.labs) = c("01", "07")
 
-average_max_temp_p =
+average_max_temp_plot =
   ny_noaa %>%
   group_by(id, month, year) %>%
   summarize(mean_tmax = mean(tmax, na.rm = TRUE)) %>%
@@ -263,6 +269,8 @@ average_max_temp_p =
     . ~ month,
     labeller = labeller(month = month.labs)
     )
+
+ggsave("./results_plot/average_max_temp_plot.pdf", average_max_temp_plot, width = 8.5, height = 7)
 ```
 
 The average max temperature in January across all stations ranges from -10 C to 10 C. Three outliers observed below -10 C are in 1982, 1994, and 2005. The average max temperature in July across all stations ranges from 20 C to 35 C. Four outliers observed below 20 C are in 1984, 1988, 2004, and 2007. One outlier observed above 35 C is in 2010. 
@@ -302,7 +310,10 @@ snow_p =
     caption = "Data from NOAA National Climatic Data Center"
   )
 
-tmax_tmin_p + snow_p + plot_layout(ncol = 2, width = c(2, 1.5))
+temp_snow_plot = 
+  tmax_tmin_p + snow_p + plot_layout(ncol = 2, width = c(2, 1.5))
+
+ggsave("./results_plot/temp_snow_plot.pdf", temp_snow_plot, width = 7.8, height = 6)
 ```
 
 For the max vs. min temperature plot, the most counts for max temperature ranges from -10 C to 15 C, the most counts for min temperature ranges from 0 C to 30 C. It is hard to conclude from the max temperature that there is in fact global warming happening, however, the min temperature may show some evidence for global warming. 
